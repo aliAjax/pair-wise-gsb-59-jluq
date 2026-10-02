@@ -19,6 +19,7 @@ import {
 import { ReviewActions } from "../../core/state/review.actions";
 import {
   hasReviewDifference,
+  latestOpinionsByReviewer,
   selectClauses,
   selectFilteredClauses,
   selectFilters,
@@ -105,9 +106,12 @@ export class ComparisonPage {
   });
   readonly differenceCount = computed(
     () =>
-      this.clauses().flatMap((clause) => clause.responses).filter(
-        hasReviewDifference,
-      ).length,
+      this.clauses()
+        .flatMap((clause) =>
+          clause.responses.map((response) => ({ clause, response })),
+        )
+        .filter(({ clause, response }) => hasReviewDifference(response, clause))
+        .length,
   );
   readonly reusedProofCount = computed(
     () =>
@@ -142,8 +146,19 @@ export class ComparisonPage {
     return clause.responses.find((response) => response.supplierId === supplierId);
   }
 
-  hasDifference(response: SupplierResponse | undefined): boolean {
-    return response ? hasReviewDifference(response) : false;
+  hasDifference(
+    clause: Clause,
+    response: SupplierResponse | undefined,
+  ): boolean {
+    return response ? hasReviewDifference(response, clause) : false;
+  }
+
+  clauseHasDifference(clause: Clause): boolean {
+    return clause.responses.some((response) => hasReviewDifference(response, clause));
+  }
+
+  currentOpinionCount(response: SupplierResponse): number {
+    return latestOpinionsByReviewer(response).length;
   }
 
   isReusedProof(response: SupplierResponse | undefined): boolean {

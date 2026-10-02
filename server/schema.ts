@@ -55,6 +55,8 @@ export const typeDefs = parse(`
     score: Int!
     comment: String!
     createdAt: String!
+    batch: Int!
+    submissionFingerprint: String!
   }
 
   type Clarification {

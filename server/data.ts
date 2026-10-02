@@ -358,6 +358,15 @@ const makeResponse = (
     .map((item, index) => ({
       id: `OP-${id}-${index + 1}`,
       ...item,
+      batch: 1,
+      submissionFingerprint: [
+        id,
+        1,
+        item.reviewer,
+        item.decision,
+        item.score,
+        item.comment,
+      ].join("|"),
     }));
   base.clarifications = clarifications.filter((item) => item.responseId === id);
   return base;
@@ -462,9 +471,29 @@ class ReviewDataStore {
   }
 
   mutate<T>(work: (database: ReviewDatabase) => T): T {
-    const result = work(this.data);
-    writeFileSync(this.runtimePath, JSON.stringify(this.data, null, 2), "utf8");
-    return result;
+    const previous = structuredClone(this.data);
+    try {
+      const result = work(this.data);
+      writeFileSync(
+        this.runtimePath,
+        JSON.stringify(this.data, null, 2),
+        "utf8",
+      );
+      return result;
+    } catch (error) {
+      // 业务校验或持久化失败时恢复上一完整快照，避免半成品写入。
+      this.data = previous;
+      try {
+        writeFileSync(
+          this.runtimePath,
+          JSON.stringify(this.data, null, 2),
+          "utf8",
+        );
+      } catch {
+        // 恢复写盘本身失败时仍保留内存中的完整快照。
+      }
+      throw error;
+    }
   }
 
   reset(): ReviewDatabase {

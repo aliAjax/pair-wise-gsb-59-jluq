@@ -13,7 +13,9 @@ import {
   type SupplierResponse,
 } from "../../core/models/review.models";
 import {
+  activeReviewerCount,
   hasReviewDifference,
+  hasVetoConsensus,
   selectAuditLogs,
   selectClauses,
   selectDashboard,
@@ -81,7 +83,7 @@ export class DashboardPage {
   readonly differences = computed(() =>
     this.clauses().flatMap((clause) =>
       clause.responses
-        .filter(hasReviewDifference)
+        .filter((response) => hasReviewDifference(response, clause))
         .map((response) => ({ clause, response })),
     ),
   );
@@ -90,11 +92,8 @@ export class DashboardPage {
       .filter((clause) => clause.type === "mandatory")
       .flatMap((clause) =>
         clause.responses
-          .filter(
-            (response) =>
-              response.status === "pending" ||
-              response.status === "clarification",
-          )
+          // 否决项需两名评审员在当前批次给出明确结论，单一意见不算完成。
+          .filter((response) => !hasVetoConsensus(response))
           .map((response) => ({ clause, response })),
       ),
   );
@@ -103,9 +102,14 @@ export class DashboardPage {
     if (clauses.length === 0) {
       return 0;
     }
+    // 以当前批次是否集齐两名评审员有效结论衡量覆盖进度。
     const reviewed = clauses.filter((clause) =>
-      clause.responses.every((response) => response.reviews.length > 0),
+      clause.responses.every(
+        (response) => activeReviewerCount(response) >= 2,
+      ),
     ).length;
     return Math.round((reviewed / clauses.length) * 100);
   });
+
+  activeReviewerCount = activeReviewerCount;
 }

@@ -132,7 +132,7 @@
           @for (supplier of visibleSuppliers(); track supplier.id) {
             @let response = responseFor(clause, supplier.id);
             <td
-              [class.cell-warning]="hasDifference(response)"
+              [class.cell-warning]="hasDifference(clause, response)"
               [class.cell-reused]="isReusedProof(response)"
             >
               @if (response) {
@@ -144,7 +144,10 @@
                   <span class="attachment" [title]="response.attachmentName">
                     {{ response.attachmentName }}
                   </span>
-                  <small>{{ response.reviews.length }} 条独立意见</small>
+                  <small>
+                    第 {{ response.reviewRound }} 批次 ·
+                    {{ currentOpinionCount(response) }} 条当前意见
+                  </small>
                 </div>
               } @else {
                 <span class="muted">无响应</span>
@@ -152,7 +155,7 @@
             </td>
           }
           <td class="risk-cell">
-            @let hasAnyDifference = clause.responses.some(hasDifference);
+            @let hasAnyDifference = clauseHasDifference(clause);
             @let hasAnyReuse = hasReusedProof(clause);
             @if (hasAnyDifference) {
               <span class="risk-item warn">

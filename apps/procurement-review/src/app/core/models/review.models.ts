@@ -21,6 +21,8 @@ export interface ReviewerOpinion {
   score: number;
   comment: string;
   createdAt: string;
+  batch: number;
+  submissionFingerprint: string;
 }
 
 export interface Clarification {

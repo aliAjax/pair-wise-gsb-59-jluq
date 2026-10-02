@@ -24,6 +24,8 @@ import {
 import { ReviewActions } from "../../core/state/review.actions";
 import {
   hasReviewDifference,
+  latestOpinionsByReviewer,
+  scoreRange,
   selectClauses,
   selectPendingClarifications,
   selectRole,
@@ -87,10 +89,24 @@ export class ReviewPage {
   readonly differences = computed(() =>
     this.clauses().flatMap((clause) =>
       clause.responses
-        .filter(hasReviewDifference)
-        .map((response) => ({ clause, response })),
+        .filter((response) => hasReviewDifference(response, clause))
+        .map((response) => ({
+          clause,
+          response,
+          opinions: latestOpinionsByReviewer(response),
+          range: scoreRange(response),
+        })),
     ),
   );
+
+  currentOpinions(response: SupplierResponse) {
+    return latestOpinionsByReviewer(response);
+  }
+
+  scoreRangeText(response: SupplierResponse): string {
+    const range = scoreRange(response);
+    return range ? `${range.min} - ${range.max}` : "0 - 0";
+  }
   readonly finalizedCount = computed(
     () => this.versions().filter((version) => version.status === "finalized").length,
   );

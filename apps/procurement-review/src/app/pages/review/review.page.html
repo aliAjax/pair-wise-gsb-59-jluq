@@ -155,7 +155,7 @@
           </td>
           <td>
             <div class="opinion-grid">
-              @for (review of item.response.reviews; track review.id) {
+              @for (review of currentOpinions(item.response); track review.id) {
                 <div>
                   <strong>{{ review.reviewer }}</strong>
                   <app-status-tag [status]="review.decision" />
@@ -165,10 +165,7 @@
               }
             </div>
           </td>
-          <td>
-            {{ item.response.reviews[0]?.score ?? 0 }} -
-            {{ item.response.reviews[item.response.reviews.length - 1]?.score ?? 0 }}
-          </td>
+          <td>{{ scoreRangeText(item.response) }}</td>
           <td>{{ item.response.attachmentName }}</td>
         </tr>
       </ng-template>

@@ -96,7 +96,7 @@
             <tr>
               <th>条款</th>
               <th>供应商</th>
-              <th>当前状态</th>
+              <th>当前批次结论</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-item>
@@ -106,12 +106,18 @@
                 <div class="table-secondary">{{ item.clause.title }}</div>
               </td>
               <td>{{ item.response.supplierName }}</td>
-              <td><app-status-tag [status]="item.response.status" /></td>
+              <td>
+                <app-status-tag [status]="item.response.status" />
+                <div class="table-secondary">
+                  第 {{ item.response.reviewRound }} 批次 ·
+                  已 {{ activeReviewerCount(item.response) }}/2 名评审员结论
+                </div>
+              </td>
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="3">当前否决项均已完成明确结论。</td>
+              <td colspan="3">所有否决项均已集齐两名评审员当前批次的明确结论。</td>
             </tr>
           </ng-template>
         </p-table>

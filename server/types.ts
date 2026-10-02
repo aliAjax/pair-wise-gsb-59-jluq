@@ -34,6 +34,11 @@ export interface ReviewerOpinion {
   score: number;
   comment: string;
   createdAt: string;
+  // 评审批次：同一响应每经历一轮供应商澄清回复即开启新批次，
+  // 小组复核只采纳每名评审员在当前批次内最新的一条意见。
+  batch: number;
+  // 提交指纹：同一评审员在同一批次提交完全相同的结论/评分/意见时去重。
+  submissionFingerprint: string;
 }
 
 export interface Clarification {

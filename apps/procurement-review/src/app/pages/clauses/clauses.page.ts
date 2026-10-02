@@ -37,6 +37,7 @@ import {
 import { ReviewActions } from "../../core/state/review.actions";
 import {
   hasReviewDifference,
+  latestOpinionsByReviewer,
   selectClauseTree,
   selectRole,
 } from "../../core/state/review.selectors";
@@ -113,12 +114,20 @@ export class ClausesPage {
     const risks: string[] = [];
     if (
       clause.type === "mandatory" &&
-      clause.responses.some((response) => response.status === "pending")
+      clause.responses.some(
+        (response) => response.status === "pending" || response.status === "clarification",
+      )
     ) {
-      risks.push("存在尚未明确结论的否决项");
+      risks.push("存在尚未集齐两名评审员一致结论的否决项");
     }
-    if (clause.responses.some(hasReviewDifference)) {
-      risks.push("不同评审员意见存在分歧，必须保留并进入小组复核");
+    if (
+      clause.responses.some((response) => hasReviewDifference(response, clause))
+    ) {
+      risks.push(
+        clause.type === "scoring"
+          ? "评分相差超过 5 分或结论不一致，必须保留并进入小组复核"
+          : "两名评审员结论不一致，必须保留并进入小组复核",
+      );
     }
     if (
       clause.responses.some((response) =>
@@ -249,12 +258,12 @@ export class ClausesPage {
     this.clarificationVisible.set(false);
   }
 
-  latestOpinion(
-    response: SupplierResponse,
-    reviewer: string,
-  ): string | undefined {
-    return response.reviews.find((review) => review.reviewer === reviewer)
-      ?.comment;
+  currentOpinions(response: SupplierResponse) {
+    return latestOpinionsByReviewer(response);
+  }
+
+  currentBatch(response: SupplierResponse): number {
+    return response.reviewRound;
   }
 
   private findClause(
@@ -286,9 +295,8 @@ export class ClausesPage {
     if (!response) {
       return;
     }
-    const latest = [...response.reviews].sort(
-      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
-    )[0];
+    // 预填当前批次内最新一条意见；澄清后旧批次意见不再作为待提交默认值。
+    const latest = latestOpinionsByReviewer(response)[0];
     this.assessmentForm.reset({
       decision: latest?.decision ?? response.status,
       score: latest?.score ?? response.claimedScore,

@@ -2,10 +2,23 @@ import { createFeatureSelector, createSelector } from "@ngrx/store";
 import type {
   Clause,
   ClauseTreeNode,
-  ComplianceStatus,
   ReviewState,
   SupplierResponse,
 } from "../models/review.models";
+import {
+  activeReviewerCount,
+  hasReviewDifference as responseHasDifference,
+  hasVetoConsensus,
+  latestOpinionsByReviewer,
+  scoreRange,
+} from "./review.aggregation";
+
+export {
+  activeReviewerCount,
+  hasVetoConsensus,
+  latestOpinionsByReviewer,
+  scoreRange,
+};
 
 export const selectReviewState =
   createFeatureSelector<ReviewState>("review");
@@ -70,14 +83,10 @@ export const selectToast = createSelector(
   (state) => state.toast,
 );
 
-export const hasReviewDifference = (response: SupplierResponse): boolean => {
-  const decisions = new Set(
-    response.reviews
-      .filter((review) => review.decision !== "clarification")
-      .map((review) => review.decision),
-  );
-  return decisions.size > 1;
-};
+export const hasReviewDifference = (
+  response: SupplierResponse,
+  clause: Pick<Clause, "type">,
+): boolean => responseHasDifference(response, clause);
 
 export const findResponse = (
   clause: Clause,
@@ -109,7 +118,7 @@ const filteredClauses = createSelector(
         filters.type === "all" || clause.type === filters.type;
       const matchesDifference =
         !filters.differencesOnly ||
-        clause.responses.some(hasReviewDifference);
+        clause.responses.some((response) => hasReviewDifference(response, clause));
       return (
         matchesKeyword &&
         matchesCategory &&
@@ -167,7 +176,7 @@ export const selectDifferences = createSelector(
   (clauses) =>
     clauses.flatMap((clause) =>
       clause.responses
-        .filter(hasReviewDifference)
+        .filter((response) => hasReviewDifference(response, clause))
         .map((response) => ({ clause, response })),
     ),
 );
@@ -211,8 +220,3 @@ export const selectReusedProofs = createSelector(
       .map(([fingerprint, entries]) => ({ fingerprint, entries }));
   },
 );
-
-export const responseDecisionSummary = (
-  response: SupplierResponse,
-): ComplianceStatus[] =>
-  Array.from(new Set(response.reviews.map((review) => review.decision)));

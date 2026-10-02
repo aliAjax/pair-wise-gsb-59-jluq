@@ -48,6 +48,8 @@ const WORKSPACE_QUERY = gql`
             score
             comment
             createdAt
+            batch
+            submissionFingerprint
           }
           clarifications {
             id
