@@ -6,6 +6,12 @@ import {
   createOpinionId,
   reviewDataStore,
 } from "./data";
+import {
+  clauseById,
+  effectiveReviews,
+  hasBatchDifference,
+  hasDualReviewerConclusions,
+} from "./aggregate";
 import { typeDefs } from "./schema";
 import type {
   AssessmentInput,
@@ -19,14 +25,6 @@ import type {
 } from "./types";
 
 const getDashboard = (database: ReviewDatabase): DashboardStats => {
-  const opinionsByResponse = database.responses.map((response) => {
-    const decisions = new Set(
-      response.reviews
-        .filter((review) => review.decision !== "clarification")
-        .map((review) => review.decision),
-    );
-    return decisions.size > 1;
-  });
   const proofCounts = database.responses.reduce<Record<string, number>>(
     (counts, response) => {
       if (response.proofFingerprint) {
@@ -46,10 +44,19 @@ const getDashboard = (database: ReviewDatabase): DashboardStats => {
     mandatoryCount: database.clauses.filter(
       (clause) => clause.type === "mandatory",
     ).length,
+    // 按现行批次统计：两名评审员都在当前批次留痕才算完成独立评审。
     pendingReviews: database.responses.filter(
-      (response) => response.reviews.length < 2,
+      (response) => effectiveReviews(response).length < 2,
     ).length,
-    differences: opinionsByResponse.filter(Boolean).length,
+    differences: database.responses.filter((response) =>
+      hasBatchDifference(response, clauseById(database, response.clauseId)),
+    ).length,
+    mandatoryPending: database.responses
+      .filter(
+        (response) =>
+          clauseById(database, response.clauseId)?.type === "mandatory",
+      )
+      .filter((response) => !hasDualReviewerConclusions(response)).length,
     overdueClarifications: database.responses.reduce(
       (count, response) =>
         count +
@@ -98,6 +105,7 @@ const resolvers = {
       if (input.comment.trim().length < 6) {
         throw new Error("评审意见至少需要 6 个字符。");
       }
+      const fingerprint = input.submitFingerprint?.trim();
       return reviewDataStore.mutate((database) => {
         const response = database.responses.find(
           (item) => item.id === input.responseId,
@@ -121,6 +129,31 @@ const resolvers = {
         ) {
           throw new Error("评分项判定为符合时必须填写评分。");
         }
+        // 两名评审员同时提交同一响应（含网络重试）时，按提交指纹去重。
+        if (fingerprint) {
+          const duplicate = database.responses
+            .flatMap((item) => item.reviews)
+            .find((review) => review.submitFingerprint === fingerprint);
+          if (duplicate) {
+            return duplicate;
+          }
+        }
+        // 同一评审员在现行批次内重新提交：替换该评审员本批次最新意见，
+        // 更早批次的意见保留为历史记录但不参与汇总。
+        const previous = response.reviews
+          .filter(
+            (review) =>
+              review.reviewRound === response.reviewRound &&
+              review.reviewer === input.reviewer.trim(),
+          )
+          .sort(
+            (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+          )[0];
+        if (previous) {
+          response.reviews = response.reviews.filter(
+            (review) => review.id !== previous.id,
+          );
+        }
         const opinion = {
           id: createOpinionId(),
           responseId: response.id,
@@ -130,6 +163,8 @@ const resolvers = {
           score: input.score,
           comment: input.comment.trim(),
           createdAt: new Date().toISOString(),
+          reviewRound: response.reviewRound,
+          submitFingerprint: fingerprint || undefined,
         };
         response.reviews.push(opinion);
         response.status = input.decision;
@@ -137,9 +172,9 @@ const resolvers = {
         createAudit(
           database,
           opinion.reviewer,
-          "提交独立意见",
+          previous ? "更新批次内最新意见" : "提交独立意见",
           response.id,
-          `${clause.code} ${clause.title} 判定为 ${input.decision}，评分 ${input.score}。`,
+          `${clause.code} ${clause.title} 第 ${response.reviewRound} 批次判定为 ${input.decision}，评分 ${input.score}。`,
         );
         return opinion;
       });
@@ -215,6 +250,9 @@ const resolvers = {
           (item) => item.id === clarification.responseId,
         );
         if (response) {
+          // 澄清记录更新后开启新的评审批次：受影响响应失效并回到待复核，
+          // 两名评审员须在新批次重新给出结论（旧意见保留但不再参与汇总）。
+          response.reviewRound += 1;
           response.status = "pending";
         }
         createAudit(
@@ -222,7 +260,9 @@ const resolvers = {
           input.actor,
           "回复澄清",
           clarification.id,
-          `第 ${clarification.round} 轮澄清已回复，等待评审员复核。`,
+          `第 ${clarification.round} 轮澄清已回复，响应回到待复核，进入第 ${
+            response?.reviewRound ?? clarification.round
+          } 评审批次。`,
         );
         return clarification;
       }),
@@ -245,6 +285,19 @@ const resolvers = {
         if (blockingClarifications.length > 0) {
           throw new Error(
             `仍有 ${blockingClarifications.length} 项未完成澄清，不能定稿。`,
+          );
+        }
+        // 否决项必须取得两名评审员在现行批次的结论，单一意见不能进入定稿清单。
+        const mandatoryResponses = database.responses.filter(
+          (response) =>
+            clauseById(database, response.clauseId)?.type === "mandatory",
+        );
+        const pendingMandatory = mandatoryResponses.filter(
+          (response) => !hasDualReviewerConclusions(response),
+        );
+        if (pendingMandatory.length > 0) {
+          throw new Error(
+            `仍有 ${pendingMandatory.length} 项否决项缺少两名评审员的结论，不能定稿。`,
           );
         }
         const maxVersion =

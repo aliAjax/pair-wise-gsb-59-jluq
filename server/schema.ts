@@ -55,6 +55,8 @@ export const typeDefs = parse(`
     score: Int!
     comment: String!
     createdAt: String!
+    reviewRound: Int!
+    submitFingerprint: String
   }
 
   type Clarification {
@@ -114,6 +116,7 @@ export const typeDefs = parse(`
     mandatoryCount: Int!
     pendingReviews: Int!
     differences: Int!
+    mandatoryPending: Int!
     overdueClarifications: Int!
     reusedProofs: Int!
     activeVersion: String!
@@ -139,6 +142,7 @@ export const typeDefs = parse(`
     comment: String!
     reviewer: String!
     role: ReviewRole!
+    submitFingerprint: String
   }
 
   input ClarificationInput {

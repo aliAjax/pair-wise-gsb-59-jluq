@@ -23,10 +23,14 @@ import {
 } from "../../core/models/review.models";
 import { ReviewActions } from "../../core/state/review.actions";
 import {
+  effectiveReviews,
   hasReviewDifference,
+  scoreRange,
   selectClauses,
+  selectMandatoryPending,
   selectPendingClarifications,
   selectRole,
+  selectSaving,
   selectVersions,
 } from "../../core/state/review.selectors";
 import {
@@ -77,6 +81,13 @@ export class ReviewPage {
     this.store.select(selectPendingClarifications),
     { initialValue: [] as PendingClarification[] },
   );
+  readonly mandatoryPending = toSignal(
+    this.store.select(selectMandatoryPending),
+    { initialValue: [] as Array<{ clause: Clause; response: SupplierResponse }> },
+  );
+  readonly saving = toSignal(this.store.select(selectSaving), {
+    initialValue: false,
+  });
   readonly finalizeVisible = signal(false);
   readonly responseVisible = signal(false);
   readonly selectedClarification = signal<PendingClarification | null>(null);
@@ -87,7 +98,7 @@ export class ReviewPage {
   readonly differences = computed(() =>
     this.clauses().flatMap((clause) =>
       clause.responses
-        .filter(hasReviewDifference)
+        .filter((response) => hasReviewDifference(response, clause))
         .map((response) => ({ clause, response })),
     ),
   );
@@ -111,6 +122,39 @@ export class ReviewPage {
   openFinalize(): void {
     this.finalizeForm.reset({ label: "技术响应符合性评审汇总" });
     this.finalizeVisible.set(true);
+  }
+
+  /** 复核队列只看现行批次内每名评审员的最新意见。 */
+  activeReviews(response: SupplierResponse) {
+    return effectiveReviews(response);
+  }
+
+  scoreSpan(response: SupplierResponse): string {
+    const { min, max } = scoreRange(response);
+    return `${min} - ${max}`;
+  }
+
+  differenceReason(item: {
+    clause: Clause;
+    response: SupplierResponse;
+  }): string {
+    const reviews = effectiveReviews(item.response);
+    const conclusions = new Set(
+      reviews
+        .filter((review) => review.decision !== "clarification")
+        .map((review) => review.decision),
+    );
+    const reasons: string[] = [];
+    if (conclusions.size > 1) {
+      reasons.push("符合性结论不一致");
+    }
+    if (item.clause.type === "scoring" && reviews.length >= 2) {
+      const { min, max } = scoreRange(item.response);
+      if (max - min > 5) {
+        reasons.push(`评分相差 ${max - min} 分（阈值 5 分）`);
+      }
+    }
+    return reasons.join("；");
   }
 
   finalizeVersion(): void {

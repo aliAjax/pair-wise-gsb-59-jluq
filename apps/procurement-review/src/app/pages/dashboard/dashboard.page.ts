@@ -13,6 +13,8 @@ import {
   type SupplierResponse,
 } from "../../core/models/review.models";
 import {
+  effectiveReviews,
+  hasDualReviewerConclusions,
   hasReviewDifference,
   selectAuditLogs,
   selectClauses,
@@ -81,7 +83,7 @@ export class DashboardPage {
   readonly differences = computed(() =>
     this.clauses().flatMap((clause) =>
       clause.responses
-        .filter(hasReviewDifference)
+        .filter((response) => hasReviewDifference(response, clause))
         .map((response) => ({ clause, response })),
     ),
   );
@@ -90,11 +92,7 @@ export class DashboardPage {
       .filter((clause) => clause.type === "mandatory")
       .flatMap((clause) =>
         clause.responses
-          .filter(
-            (response) =>
-              response.status === "pending" ||
-              response.status === "clarification",
-          )
+          .filter((response) => !hasDualReviewerConclusions(response))
           .map((response) => ({ clause, response })),
       ),
   );
@@ -103,9 +101,16 @@ export class DashboardPage {
     if (clauses.length === 0) {
       return 0;
     }
+    // 现行批次两名评审员都留痕才算该条款完成独立评审。
     const reviewed = clauses.filter((clause) =>
-      clause.responses.every((response) => response.reviews.length > 0),
+      clause.responses.every(
+        (response) => effectiveReviews(response).length >= 2,
+      ),
     ).length;
     return Math.round((reviewed / clauses.length) * 100);
   });
+
+  activeReviews(response: SupplierResponse) {
+    return effectiveReviews(response);
+  }
 }

@@ -185,6 +185,12 @@ const responseOverrides: Record<
     attachmentName: "项目管理说明.pdf",
     proofFingerprint: "PROOF-PLAN-C",
   },
+  "C002-SUP-A": {
+    status: "clarification",
+    claimedScore: 0,
+    attachmentName: "关键人员履历与社保材料.pdf",
+    proofFingerprint: "PROOF-STAFF-A",
+  },
   "C005-SUP-A": {
     status: "compliant",
     claimedScore: 0,
@@ -227,30 +233,12 @@ const reviewFactories: Array<{
   createdAt: string;
 }> = [
   {
-    responseId: "C002-SUP-A",
-    reviewer: "陈评审",
-    role: "reviewer_a",
-    decision: "compliant",
-    score: 0,
-    comment: "人员履历满足年限要求，社保材料与履历能够对应。",
-    createdAt: "2026-09-28T09:10:00+08:00",
-  },
-  {
-    responseId: "C002-SUP-A",
-    reviewer: "李评审",
-    role: "reviewer_b",
-    decision: "clarification",
-    score: 0,
-    comment: "安全负责人项目经历需补充合同页或验收证明。",
-    createdAt: "2026-09-28T10:25:00+08:00",
-  },
-  {
     responseId: "C003-SUP-A",
     reviewer: "陈评审",
     role: "reviewer_a",
     decision: "compliant",
-    score: 13,
-    comment: "里程碑和交付物完整，风险缓冲充分。",
+    score: 18,
+    comment: "里程碑和交付物完整，风险缓冲充分，人员投入计划可核验。",
     createdAt: "2026-09-28T11:10:00+08:00",
   },
   {
@@ -259,7 +247,7 @@ const reviewFactories: Array<{
     role: "reviewer_b",
     decision: "compliant",
     score: 10,
-    comment: "计划完整，但关键人员投入比例未量化。",
+    comment: "计划完整，但关键人员投入比例未量化，按较低档计分。",
     createdAt: "2026-09-28T11:40:00+08:00",
   },
   {
@@ -332,6 +320,15 @@ const makeResponse = (
     Math.round(maxScore * 0.64),
   ];
   const override = responseOverrides[id] ?? {};
+  const responseClarifications = clarifications.filter(
+    (item) => item.responseId === id,
+  );
+  // 每回复一轮澄清即开启新的评审批次，原批次意见失效、响应回到待复核。
+  const reviewRound =
+    1 +
+    responseClarifications.filter(
+      (item) => item.status === "responded",
+    ).length;
   const base: SupplierResponse = {
     id,
     clauseId: clause.id,
@@ -349,7 +346,7 @@ const makeResponse = (
       override.proofFingerprint ?? `PROOF-${clause.id}-${supplier.id}`,
     submittedBy: `${supplier.name}投标专员`,
     submittedAt: `2026-09-${String(22 + ((clauseIndex + supplierIndex) % 4)).padStart(2, "0")}T16:20:00+08:00`,
-    reviewRound: 1,
+    reviewRound,
     reviews: [],
     clarifications: [],
   };
@@ -358,8 +355,9 @@ const makeResponse = (
     .map((item, index) => ({
       id: `OP-${id}-${index + 1}`,
       ...item,
+      reviewRound: 1,
     }));
-  base.clarifications = clarifications.filter((item) => item.responseId === id);
+  base.clarifications = responseClarifications;
   return base;
 };
 
@@ -442,6 +440,7 @@ const buildSeed = (): ReviewDatabase => ({
 class ReviewDataStore {
   private readonly runtimePath = join(process.cwd(), "server", "runtime-data.json");
   private data: ReviewDatabase;
+  private lastGoodSnapshot: ReviewDatabase;
 
   constructor() {
     if (existsSync(this.runtimePath)) {
@@ -455,20 +454,48 @@ class ReviewDataStore {
     } else {
       this.data = buildSeed();
     }
+    this.lastGoodSnapshot = this.data;
   }
 
   snapshot(): ReviewDatabase {
-    return structuredClone(this.data);
+    return structuredClone(this.lastGoodSnapshot);
   }
 
+  /**
+   * 在完整快照副本上执行变更；只有持久化成功后才提交新快照。
+   * 写入失败时回滚到上一完整快照，并重新落盘，保证下次启动一致。
+   */
   mutate<T>(work: (database: ReviewDatabase) => T): T {
-    const result = work(this.data);
-    writeFileSync(this.runtimePath, JSON.stringify(this.data, null, 2), "utf8");
+    const draft = structuredClone(this.lastGoodSnapshot);
+    const result = work(draft);
+    const serialized = JSON.stringify(draft, null, 2);
+    try {
+      writeFileSync(this.runtimePath, serialized, "utf8");
+    } catch (error) {
+      try {
+        writeFileSync(
+          this.runtimePath,
+          JSON.stringify(this.lastGoodSnapshot, null, 2),
+          "utf8",
+        );
+      } catch {
+        // 回滚落盘同样失败时仍保留内存中的上一完整快照。
+      }
+      this.data = this.lastGoodSnapshot;
+      throw new Error(
+        `评审数据写入失败，已恢复上一完整快照：${
+          error instanceof Error ? error.message : "未知错误"
+        }`,
+      );
+    }
+    this.data = draft;
+    this.lastGoodSnapshot = draft;
     return result;
   }
 
   reset(): ReviewDatabase {
     this.data = buildSeed();
+    this.lastGoodSnapshot = this.data;
     writeFileSync(this.runtimePath, JSON.stringify(this.data, null, 2), "utf8");
     return this.snapshot();
   }

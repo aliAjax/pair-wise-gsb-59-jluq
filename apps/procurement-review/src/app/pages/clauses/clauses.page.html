@@ -130,10 +130,10 @@
                   </div>
                 </dl>
 
-                <h4>独立评审意见</h4>
-                @if (response.reviews.length) {
+                <h4>独立评审意见（第 {{ response.reviewRound }} 批评次）</h4>
+                @if (activeReviews(response).length) {
                   <div class="opinion-list">
-                    @for (review of response.reviews; track review.id) {
+                    @for (review of activeReviews(response); track review.id) {
                       <article>
                         <header>
                           <strong>{{ review.reviewer }}</strong>
@@ -147,8 +147,19 @@
                       </article>
                     }
                   </div>
+                  @if (response.reviews.length > activeReviews(response).length) {
+                    <p class="muted">
+                      另有 {{ response.reviews.length - activeReviews(response).length }} 条历史意见因澄清更新已失效，不参与本批次汇总。
+                    </p>
+                  }
                 } @else {
-                  <p class="muted">尚无独立评审意见。</p>
+                  <p class="muted">
+                    @if (response.reviews.length) {
+                      澄清回复后原意见已失效，当前批次等待两名评审员重新复核。
+                    } @else {
+                      尚无独立评审意见。
+                    }
+                  </p>
                 }
 
                 <h4>澄清记录</h4>
@@ -251,7 +262,7 @@
                   label="提交独立意见"
                   icon="pi pi-check"
                   [disabled]="!canReview()"
-                  [loading]="false"
+                  [loading]="saving()"
                   styleClass="full-button"
                 />
               </form>

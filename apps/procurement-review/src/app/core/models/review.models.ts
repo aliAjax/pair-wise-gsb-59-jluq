@@ -21,6 +21,8 @@ export interface ReviewerOpinion {
   score: number;
   comment: string;
   createdAt: string;
+  reviewRound: number;
+  submitFingerprint?: string;
 }
 
 export interface Clarification {
@@ -99,6 +101,7 @@ export interface DashboardStats {
   mandatoryCount: number;
   pendingReviews: number;
   differences: number;
+  mandatoryPending: number;
   overdueClarifications: number;
   reusedProofs: number;
   activeVersion: string;
@@ -148,6 +151,7 @@ export interface AssessmentInput {
   comment: string;
   reviewer: string;
   role: ReviewRole;
+  submitFingerprint: string;
 }
 
 export interface ClarificationInput {

@@ -28,6 +28,12 @@
       <strong class="danger">{{ differences().length }}</strong>
     </article>
     <article>
+      <span>否决项缺双结论</span>
+      <strong [class.danger]="mandatoryPending().length > 0">
+        {{ mandatoryPending().length }}
+      </strong>
+    </article>
+    <article>
       <span>未完成澄清</span>
       <strong class="danger">{{ pendingClarifications().length }}</strong>
     </article>
@@ -126,7 +132,9 @@
     <div class="data-panel-header">
       <div>
         <h3>小组复核队列</h3>
-        <p>分歧不能由系统自动合并，必须保留双方意见和最终处理说明。</p>
+        <p>
+          按现行评审批次汇总：每名评审员只计批次内最新意见；结论不同或评分相差超过 5 分即列分歧。
+        </p>
       </div>
       <p-tag
         [value]="differences().length + ' 项分歧'"
@@ -138,8 +146,9 @@
         <tr>
           <th>条款</th>
           <th>供应商响应</th>
-          <th>评审员意见</th>
+          <th>批次内评审员意见</th>
           <th>评分区间</th>
+          <th>分歧原因</th>
           <th>证明材料</th>
         </tr>
       </ng-template>
@@ -148,6 +157,7 @@
           <td>
             <span class="mono">{{ item.clause.code }}</span>
             <div class="table-primary">{{ item.clause.title }}</div>
+            <div class="table-secondary">第 {{ item.response.reviewRound }} 批评次</div>
           </td>
           <td>
             {{ item.response.supplierName }}
@@ -155,7 +165,7 @@
           </td>
           <td>
             <div class="opinion-grid">
-              @for (review of item.response.reviews; track review.id) {
+              @for (review of activeReviews(item.response); track review.id) {
                 <div>
                   <strong>{{ review.reviewer }}</strong>
                   <app-status-tag [status]="review.decision" />
@@ -165,10 +175,8 @@
               }
             </div>
           </td>
-          <td>
-            {{ item.response.reviews[0]?.score ?? 0 }} -
-            {{ item.response.reviews[item.response.reviews.length - 1]?.score ?? 0 }}
-          </td>
+          <td class="mono">{{ scoreSpan(item.response) }}</td>
+          <td><span class="danger">{{ differenceReason(item) }}</span></td>
           <td>{{ item.response.attachmentName }}</td>
         </tr>
       </ng-template>
@@ -194,7 +202,7 @@
       />
     </div>
     <div class="finalize-note">
-      定稿前系统会检查未完成澄清。定稿后当前版本会生成内容哈希并锁定签署人。
+      定稿前系统会校验未完成澄清，以及每个否决项均有评审员 A、B 在现行批次的两条结论。定稿后当前版本会生成内容哈希并锁定签署人。
     </div>
     <div class="inline-actions dialog-actions">
       <p-button
@@ -207,6 +215,7 @@
         type="submit"
         label="签字并锁定"
         icon="pi pi-lock"
+        [loading]="saving()"
         [disabled]="finalizeForm.invalid"
       />
     </div>

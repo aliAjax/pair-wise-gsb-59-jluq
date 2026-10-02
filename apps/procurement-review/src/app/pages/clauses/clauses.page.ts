@@ -13,9 +13,11 @@ import {
   ReactiveFormsModule,
   Validators,
 } from "@angular/forms";
-import { toSignal } from "@angular/core/rxjs-interop";
+import { toSignal, takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { Actions, ofType } from "@ngrx/effects";
 import { RouterLink } from "@angular/router";
 import { Store } from "@ngrx/store";
+import { filter } from "rxjs";
 import type { TreeNode } from "primeng/api";
 import { AccordionModule } from "primeng/accordion";
 import { ButtonModule } from "primeng/button";
@@ -36,9 +38,11 @@ import {
 } from "../../core/models/review.models";
 import { ReviewActions } from "../../core/state/review.actions";
 import {
+  effectiveReviews,
   hasReviewDifference,
   selectClauseTree,
   selectRole,
+  selectSaving,
 } from "../../core/state/review.selectors";
 import {
   ClarificationTagComponent,
@@ -73,6 +77,25 @@ import {
 })
 export class ClausesPage {
   private readonly store = inject(Store);
+  private readonly actions$ = inject(Actions);
+
+  /**
+   * 同一次编辑会话生成一枚提交指纹；两名评审员同时提交或网络重试携带同一指纹时，
+   * 服务端只落一条意见。保存成功后换发新指纹，不影响下一次正常提交。
+   */
+  private submitFingerprint = crypto.randomUUID();
+
+  constructor() {
+    this.actions$
+      .pipe(
+        ofType(ReviewActions.loadReviewDataSuccess),
+        filter(({ toast }) => toast?.includes("评审意见") ?? false),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        this.submitFingerprint = crypto.randomUUID();
+      });
+  }
 
   readonly clauseTree = toSignal(this.store.select(selectClauseTree), {
     initialValue: [],
@@ -80,6 +103,9 @@ export class ClausesPage {
   readonly treeNodes = computed(() => this.toTreeNodes(this.clauseTree()));
   readonly role = toSignal(this.store.select(selectRole), {
     initialValue: "reviewer_a",
+  });
+  readonly saving = toSignal(this.store.select(selectSaving), {
+    initialValue: false,
   });
   readonly selectedTreeKey = signal<string | null>(null);
   readonly selectedSupplierId = signal<string | null>(null);
@@ -117,8 +143,8 @@ export class ClausesPage {
     ) {
       risks.push("存在尚未明确结论的否决项");
     }
-    if (clause.responses.some(hasReviewDifference)) {
-      risks.push("不同评审员意见存在分歧，必须保留并进入小组复核");
+    if (clause.responses.some((response) => hasReviewDifference(response, clause))) {
+      risks.push("不同评审员结论对立或评分相差超过 5 分，必须保留并进入小组复核");
     }
     if (
       clause.responses.some((response) =>
@@ -188,12 +214,19 @@ export class ClausesPage {
     const clause = node.data as Clause;
     this.selectedTreeKey.set(clause.id);
     this.selectedSupplierId.set(clause.responses[0]?.supplierId ?? null);
+    this.rotateFingerprint();
     this.resetAssessmentForm(clause.responses[0]);
   }
 
   selectResponse(response: SupplierResponse): void {
     this.selectedSupplierId.set(response.supplierId);
+    this.rotateFingerprint();
     this.resetAssessmentForm(response);
+  }
+
+  /** 切换响应即开启新的编辑会话，换发提交指纹，避免误去重。 */
+  private rotateFingerprint(): void {
+    this.submitFingerprint = crypto.randomUUID();
   }
 
   submitAssessment(): void {
@@ -216,6 +249,7 @@ export class ClausesPage {
           comment: value.comment,
           reviewer: roleProfiles[this.role()].name,
           role: this.role(),
+          submitFingerprint: this.submitFingerprint,
         },
       }),
     );
@@ -253,8 +287,14 @@ export class ClausesPage {
     response: SupplierResponse,
     reviewer: string,
   ): string | undefined {
-    return response.reviews.find((review) => review.reviewer === reviewer)
-      ?.comment;
+    return this.activeReviews(response).find(
+      (review) => review.reviewer === reviewer,
+    )?.comment;
+  }
+
+  /** 模板使用：现行批次内每名评审员的最新意见。 */
+  activeReviews(response: SupplierResponse) {
+    return effectiveReviews(response);
   }
 
   private findClause(
@@ -286,9 +326,11 @@ export class ClausesPage {
     if (!response) {
       return;
     }
-    const latest = [...response.reviews].sort(
-      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
-    )[0];
+    // 仅回填该评审员在现行批次内的最新意见；澄清后轮次加一，旧意见不再回填。
+    const reviewer = roleProfiles[this.role()].name;
+    const latest = effectiveReviews(response).find(
+      (review) => review.reviewer === reviewer,
+    );
     this.assessmentForm.reset({
       decision: latest?.decision ?? response.status,
       score: latest?.score ?? response.claimedScore,

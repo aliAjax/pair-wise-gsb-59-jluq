@@ -78,7 +78,7 @@
         <div class="data-panel-header">
           <div>
             <h3>否决项遗漏检查</h3>
-            <p>否决条款不得以普通评分替代符合性结论</p>
+            <p>否决项须有评审员 A、B 在现行批次的两条独立结论才能定稿</p>
           </div>
           <p-tag
             [value]="mandatoryGaps().length + ' 项'"
@@ -111,7 +111,7 @@
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="3">当前否决项均已完成明确结论。</td>
+              <td colspan="3">所有否决项均已取得两名评审员的当前批次结论。</td>
             </tr>
           </ng-template>
         </p-table>
@@ -123,7 +123,7 @@
         <div class="data-panel-header">
           <div>
             <h3>评分差异定位</h3>
-            <p>不同评审员对同一响应作出不同符合性判断</p>
+            <p>结论不同或评分项分差超过 5 分（按现行批次每名评审员最新意见）</p>
           </div>
           <p-button label="全部差异" text routerLink="/comparison" />
         </div>
@@ -151,7 +151,7 @@
               <td>{{ item.response.supplierName }}</td>
               <td>
                 <div class="tag-row">
-                  @for (review of item.response.reviews; track review.id) {
+                  @for (review of activeReviews(item.response); track review.id) {
                     <span class="review-score">
                       {{ review.reviewer }} · {{ review.score }} 分
                     </span>

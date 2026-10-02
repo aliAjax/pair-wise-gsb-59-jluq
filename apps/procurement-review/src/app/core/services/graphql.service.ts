@@ -48,6 +48,8 @@ const WORKSPACE_QUERY = gql`
             score
             comment
             createdAt
+            reviewRound
+            submitFingerprint
           }
           clarifications {
             id
@@ -88,6 +90,7 @@ const WORKSPACE_QUERY = gql`
         mandatoryCount
         pendingReviews
         differences
+        mandatoryPending
         overdueClarifications
         reusedProofs
         activeVersion
@@ -111,6 +114,8 @@ const SUBMIT_ASSESSMENT = gql`
       score
       comment
       createdAt
+      reviewRound
+      submitFingerprint
     }
   }
 `;
