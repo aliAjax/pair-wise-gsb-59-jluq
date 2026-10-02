@@ -1,0 +1,250 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <h2>评审概览</h2>
+      <p>
+        汇总否决项遗漏、评分分歧、澄清期限和证明复用风险。所有统计来自本地 GraphQL mock server。
+      </p>
+    </div>
+    <div class="inline-actions">
+      <p-button
+        label="进入条款评审"
+        icon="pi pi-sitemap"
+        routerLink="/clauses"
+      />
+      <p-button
+        label="查看差异"
+        icon="pi pi-table"
+        severity="secondary"
+        [outlined]="true"
+        routerLink="/comparison"
+      />
+    </div>
+  </header>
+
+  @if (dashboard(); as stats) {
+    <div class="metric-grid">
+      <article class="metric">
+        <span>技术条款</span>
+        <strong>{{ stats.totalClauses }}</strong>
+        <small>{{ stats.mandatoryCount }} 项否决条款</small>
+      </article>
+      <article class="metric">
+        <span>待独立评审</span>
+        <strong>{{ stats.pendingReviews }}</strong>
+        <small>按响应项统计</small>
+      </article>
+      <article class="metric">
+        <span>评审意见分歧</span>
+        <strong class="danger">{{ stats.differences }}</strong>
+        <small>必须保留各自意见进入复核</small>
+      </article>
+      <article class="metric">
+        <span>逾期澄清</span>
+        <strong class="danger">{{ stats.overdueClarifications }}</strong>
+        <small>不得静默关闭或直接定稿</small>
+      </article>
+      <article class="metric">
+        <span>证明重复使用</span>
+        <strong>{{ stats.reusedProofs }}</strong>
+        <small>需人工确认适用范围</small>
+      </article>
+      <article class="metric">
+        <span>当前工作版本</span>
+        <strong class="version">{{ stats.activeVersion }}</strong>
+        <small>定稿后锁定快照</small>
+      </article>
+    </div>
+
+    <div class="dashboard-grid">
+      <section class="data-panel progress-panel">
+        <div class="data-panel-header">
+          <div>
+            <h3>评审覆盖进度</h3>
+            <p>按每一条供应商响应是否已有独立意见计算</p>
+          </div>
+          <strong>{{ completion() }}%</strong>
+        </div>
+        <div class="data-panel-body">
+          <p-progressbar [value]="completion()" [showValue]="false" />
+          <div class="progress-labels">
+            <span>已评审 {{ completion() }}%</span>
+            <span>未完成 {{ 100 - completion() }}%</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="data-panel">
+        <div class="data-panel-header">
+          <div>
+            <h3>否决项遗漏检查</h3>
+            <p>否决条款不得以普通评分替代符合性结论</p>
+          </div>
+          <p-tag
+            [value]="mandatoryGaps().length + ' 项'"
+            [severity]="mandatoryGaps().length ? 'danger' : 'success'"
+          />
+        </div>
+        <p-table
+          [value]="mandatoryGaps()"
+          [paginator]="true"
+          [rows]="5"
+          responsiveLayout="scroll"
+          styleClass="compact-table"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th>条款</th>
+              <th>供应商</th>
+              <th>当前状态</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-item>
+            <tr>
+              <td>
+                <span class="mono">{{ item.clause.code }}</span>
+                <div class="table-secondary">{{ item.clause.title }}</div>
+              </td>
+              <td>{{ item.response.supplierName }}</td>
+              <td><app-status-tag [status]="item.response.status" /></td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="3">当前否决项均已完成明确结论。</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </section>
+    </div>
+
+    <div class="dashboard-grid lower">
+      <section class="data-panel">
+        <div class="data-panel-header">
+          <div>
+            <h3>评分差异定位</h3>
+            <p>不同评审员对同一响应作出不同符合性判断</p>
+          </div>
+          <p-button label="全部差异" text routerLink="/comparison" />
+        </div>
+        <p-table
+          [value]="differences()"
+          [paginator]="true"
+          [rows]="5"
+          responsiveLayout="scroll"
+          styleClass="compact-table"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th>条款</th>
+              <th>供应商</th>
+              <th>独立评分</th>
+              <th>处理</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-item>
+            <tr>
+              <td>
+                <span class="mono">{{ item.clause.code }}</span>
+                <div class="table-secondary">{{ item.clause.title }}</div>
+              </td>
+              <td>{{ item.response.supplierName }}</td>
+              <td>
+                <div class="tag-row">
+                  @for (review of item.response.reviews; track review.id) {
+                    <span class="review-score">
+                      {{ review.reviewer }} · {{ review.score }} 分
+                    </span>
+                  }
+                </div>
+              </td>
+              <td>
+                <p-button
+                  label="小组复核"
+                  size="small"
+                  severity="warn"
+                  [outlined]="true"
+                  routerLink="/review"
+                />
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </section>
+
+      <section class="data-panel">
+        <div class="data-panel-header">
+          <div>
+            <h3>最近审计事件</h3>
+            <p>操作人、对象和时间不可删除</p>
+          </div>
+          <p-button label="审计报告" text routerLink="/audit" />
+        </div>
+        <ol class="audit-list">
+          @for (log of auditLogs().slice(0, 5); track log.id) {
+            <li>
+              <span>{{ log.action }}</span>
+              <strong>{{ log.actor }}</strong>
+              <small>{{ log.detail }}</small>
+              <time>{{ log.at | date: "MM-dd HH:mm" }}</time>
+            </li>
+          }
+        </ol>
+      </section>
+    </div>
+
+    <section class="data-panel clarification-panel">
+      <div class="data-panel-header">
+        <div>
+          <h3>待处理澄清</h3>
+          <p>超期项目会阻止版本签字定稿</p>
+        </div>
+        <p-tag
+          [value]="pendingClarifications().length + ' 项'"
+          severity="warn"
+        />
+      </div>
+      <p-table
+        [value]="pendingClarifications()"
+        [paginator]="true"
+        [rows]="5"
+        responsiveLayout="scroll"
+        styleClass="compact-table"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th>澄清编号</th>
+            <th>条款 / 供应商</th>
+            <th>轮次</th>
+            <th>截止时间</th>
+            <th>状态</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-item>
+          <tr>
+            <td class="mono">{{ item.clarification.id }}</td>
+            <td>
+              {{ item.clause.code }} {{ item.clause.title }}
+              <div class="table-secondary">{{ item.response.supplierName }}</div>
+            </td>
+            <td>第 {{ item.clarification.round }} 轮</td>
+            <td>{{ item.clarification.dueAt | date: "yyyy-MM-dd HH:mm" }}</td>
+            <td>
+              <app-clarification-tag [status]="item.clarification.status" />
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </section>
+  } @else if (error(); as loadError) {
+    <div class="empty-state error-state">
+      <strong>GraphQL 工作区加载失败</strong>
+      <span>{{ loadError }}</span>
+      <p>请确认 18462 端口上的本地 mock server 正在运行。</p>
+    </div>
+  } @else {
+    <div class="empty-state">
+      {{ loading() ? "正在通过 GraphQL 加载评审工作区..." : "暂无评审数据。" }}
+    </div>
+  }
+</section>

@@ -1,0 +1,65 @@
+{
+  "name": "procurement-review",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/procurement-review/src",
+  "prefix": "app",
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/procurement-review",
+        "index": "apps/procurement-review/src/index.html",
+        "browser": "apps/procurement-review/src/main.ts",
+        "polyfills": [],
+        "tsConfig": "apps/procurement-review/tsconfig.app.json",
+        "styles": [
+          "node_modules/primeicons/primeicons.css",
+          "apps/procurement-review/src/styles.scss"
+        ],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "1.2mb",
+              "maximumError": "2.5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "12kb",
+              "maximumError": "30kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "options": {
+        "buildTarget": "procurement-review:build:development",
+        "host": "0.0.0.0",
+        "port": 18459
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "procurement-review:build:production"
+        },
+        "development": {
+          "buildTarget": "procurement-review:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    }
+  }
+}

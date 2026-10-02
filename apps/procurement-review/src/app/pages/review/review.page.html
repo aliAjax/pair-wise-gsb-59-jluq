@@ -1,0 +1,256 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <h2>评审版本与小组复核</h2>
+      <p>
+        保留每位评审员的独立意见；分歧进入小组复核，已定稿版本不可覆盖。
+      </p>
+    </div>
+    <p-button
+      label="汇总签字定稿"
+      icon="pi pi-verified"
+      [disabled]="!canFinalize()"
+      (onClick)="openFinalize()"
+    />
+  </header>
+
+  <div class="version-summary">
+    <article>
+      <span>版本总数</span>
+      <strong>{{ versions().length }}</strong>
+    </article>
+    <article>
+      <span>已定稿版本</span>
+      <strong>{{ finalizedCount() }}</strong>
+    </article>
+    <article>
+      <span>待小组复核分歧</span>
+      <strong class="danger">{{ differences().length }}</strong>
+    </article>
+    <article>
+      <span>未完成澄清</span>
+      <strong class="danger">{{ pendingClarifications().length }}</strong>
+    </article>
+  </div>
+
+  <div class="review-grid">
+    <section class="data-panel versions-panel">
+      <div class="data-panel-header">
+        <div>
+          <h3>版本历史</h3>
+          <p>定稿版本保存内容哈希和签署人</p>
+        </div>
+      </div>
+      <p-table [value]="versions()" responsiveLayout="scroll">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>版本</th>
+            <th>名称</th>
+            <th>状态</th>
+            <th>响应项</th>
+            <th>内容哈希</th>
+            <th>创建信息</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-version>
+          <tr>
+            <td class="mono">{{ version.version }}</td>
+            <td>
+              <span class="table-primary">{{ version.label }}</span>
+              <div class="table-secondary">
+                签署人：
+                {{ version.signedBy.length ? version.signedBy.join("、") : "未签署" }}
+              </div>
+            </td>
+            <td><app-version-tag [status]="version.status" /></td>
+            <td>
+              {{ version.responseCount }} 项
+              <div class="table-secondary">
+                {{ version.clauseCount }} 条条款
+              </div>
+            </td>
+            <td class="mono">{{ version.contentHash }}</td>
+            <td>
+              {{ version.createdBy }}
+              <div class="table-secondary">
+                {{ version.createdAt | date: "yyyy-MM-dd HH:mm" }}
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </section>
+
+    <aside class="data-panel clarification-panel">
+      <div class="data-panel-header">
+        <div>
+          <h3>澄清期限</h3>
+          <p>未回复或逾期项目会阻止定稿</p>
+        </div>
+      </div>
+      @if (pendingClarifications().length) {
+        <div class="clarification-cards">
+          @for (item of pendingClarifications(); track item.clarification.id) {
+            <article>
+              <header>
+                <span class="mono">{{ item.clarification.id }}</span>
+                <app-clarification-tag
+                  [status]="item.clarification.status"
+                />
+              </header>
+              <strong>
+                {{ item.clause.code }} {{ item.clause.title }}
+              </strong>
+              <small>{{ item.response.supplierName }} · 第 {{ item.clarification.round }} 轮</small>
+              <p>{{ item.clarification.requestText }}</p>
+              <time>
+                截止 {{ item.clarification.dueAt | date: "yyyy-MM-dd HH:mm" }}
+              </time>
+              <p-button
+                label="登记回复"
+                size="small"
+                [outlined]="true"
+                [disabled]="!canRespond()"
+                (onClick)="openResponse(item)"
+              />
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="empty-copy">没有未完成澄清。</p>
+      }
+    </aside>
+  </div>
+
+  <section class="data-panel difference-panel">
+    <div class="data-panel-header">
+      <div>
+        <h3>小组复核队列</h3>
+        <p>分歧不能由系统自动合并，必须保留双方意见和最终处理说明。</p>
+      </div>
+      <p-tag
+        [value]="differences().length + ' 项分歧'"
+        severity="warn"
+      />
+    </div>
+    <p-table [value]="differences()" responsiveLayout="scroll">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>条款</th>
+          <th>供应商响应</th>
+          <th>评审员意见</th>
+          <th>评分区间</th>
+          <th>证明材料</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td>
+            <span class="mono">{{ item.clause.code }}</span>
+            <div class="table-primary">{{ item.clause.title }}</div>
+          </td>
+          <td>
+            {{ item.response.supplierName }}
+            <div class="table-secondary">{{ item.response.id }}</div>
+          </td>
+          <td>
+            <div class="opinion-grid">
+              @for (review of item.response.reviews; track review.id) {
+                <div>
+                  <strong>{{ review.reviewer }}</strong>
+                  <app-status-tag [status]="review.decision" />
+                  <span>{{ review.score }} 分</span>
+                  <p>{{ review.comment }}</p>
+                </div>
+              }
+            </div>
+          </td>
+          <td>
+            {{ item.response.reviews[0]?.score ?? 0 }} -
+            {{ item.response.reviews[item.response.reviews.length - 1]?.score ?? 0 }}
+          </td>
+          <td>{{ item.response.attachmentName }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </section>
+</section>
+
+<p-dialog
+  header="汇总签字定稿"
+  [modal]="true"
+  [visible]="finalizeVisible()"
+  (visibleChange)="finalizeVisible.set($event)"
+  [style]="{ width: 'min(560px, 94vw)' }"
+>
+  <form [formGroup]="finalizeForm" (ngSubmit)="finalizeVersion()">
+    <div class="field">
+      <label for="version-label">版本名称</label>
+      <input
+        id="version-label"
+        pInputText
+        formControlName="label"
+        placeholder="例如：技术响应符合性评审汇总"
+      />
+    </div>
+    <div class="finalize-note">
+      定稿前系统会检查未完成澄清。定稿后当前版本会生成内容哈希并锁定签署人。
+    </div>
+    <div class="inline-actions dialog-actions">
+      <p-button
+        label="取消"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="finalizeVisible.set(false)"
+      />
+      <p-button
+        type="submit"
+        label="签字并锁定"
+        icon="pi pi-lock"
+        [disabled]="finalizeForm.invalid"
+      />
+    </div>
+  </form>
+</p-dialog>
+
+<p-dialog
+  header="登记澄清回复"
+  [modal]="true"
+  [visible]="responseVisible()"
+  (visibleChange)="responseVisible.set($event)"
+  [style]="{ width: 'min(560px, 94vw)' }"
+>
+  <form [formGroup]="responseForm" (ngSubmit)="respondClarification()">
+    @if (selectedClarification(); as item) {
+      <div class="response-context">
+        <strong>{{ item.clause.code }} {{ item.clause.title }}</strong>
+        <span>{{ item.response.supplierName }} · 第 {{ item.clarification.round }} 轮</span>
+        <p>{{ item.clarification.requestText }}</p>
+      </div>
+    }
+    <div class="field">
+      <label for="clarification-response">供应商回复内容</label>
+      <textarea
+        id="clarification-response"
+        pTextarea
+        formControlName="responseText"
+        rows="5"
+        placeholder="登记补充材料、事实说明和答复时间"
+      ></textarea>
+    </div>
+    <div class="inline-actions dialog-actions">
+      <p-button
+        label="取消"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="responseVisible.set(false)"
+      />
+      <p-button
+        type="submit"
+        label="保存回复"
+        icon="pi pi-check"
+        [disabled]="responseForm.invalid"
+      />
+    </div>
+  </form>
+</p-dialog>

@@ -1,0 +1,51 @@
+<header class="app-header">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">采</span>
+    <div>
+      <h1>公共采购技术响应符合性评审平台</h1>
+      <p>条款比对、独立意见、澄清轮次与签字版本留痕</p>
+    </div>
+  </div>
+
+  <nav class="primary-nav" aria-label="主导航">
+    <a
+      routerLink="/"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      评审概览
+    </a>
+    <a routerLink="/clauses" routerLinkActive="active">条款评审</a>
+    <a routerLink="/comparison" routerLinkActive="active">批量比对</a>
+    <a routerLink="/review" routerLinkActive="active">评审版本</a>
+    <a routerLink="/audit" routerLinkActive="active">审计与导出</a>
+  </nav>
+
+  <div class="role-switcher">
+    <span>当前角色</span>
+    <p-select
+      [options]="roleOptions"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="role()"
+      (ngModelChange)="changeRole($event)"
+      appendTo="body"
+      ariaLabel="切换评审角色"
+    />
+    <small>{{ currentProfile().name }}</small>
+  </div>
+</header>
+
+@if (loading() || saving()) {
+  <p-progressbar
+    mode="indeterminate"
+    [showValue]="false"
+    styleClass="global-progress"
+  />
+}
+
+<main class="app-main">
+  <router-outlet />
+</main>
+
+<p-toast position="top-right" />

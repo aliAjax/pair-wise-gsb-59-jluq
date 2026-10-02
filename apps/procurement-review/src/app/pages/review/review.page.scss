@@ -1,0 +1,178 @@
+.version-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+
+  article {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    border: 1px solid #d7e0e3;
+    border-radius: 7px;
+    background: #fff;
+  }
+
+  span {
+    color: #6b7e85;
+    font-size: 13px;
+  }
+
+  strong {
+    color: #1c3d46;
+    font-size: 25px;
+  }
+
+  strong.danger {
+    color: #ae291f;
+  }
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(330px, 0.75fr);
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.versions-panel,
+.difference-panel {
+  overflow: hidden;
+}
+
+.clarification-cards {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  padding: 12px;
+  overflow: auto;
+
+  article {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid #dfe6e8;
+    border-radius: 6px;
+    background: #fbfcfc;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  strong {
+    color: #24444c;
+    font-size: 13px;
+  }
+
+  small,
+  time {
+    color: #74858a;
+    font-size: 11px;
+  }
+
+  p {
+    margin: 0;
+    color: #4b6168;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
+
+.empty-copy {
+  margin: 0;
+  padding: 30px 16px;
+  color: #75858a;
+  text-align: center;
+}
+
+.opinion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 8px;
+
+  > div {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    justify-content: start;
+    gap: 7px;
+    padding: 9px;
+    border: 1px solid #e0e7e9;
+    border-radius: 5px;
+    background: #fafcfc;
+  }
+
+  strong {
+    color: #29464e;
+    font-size: 12px;
+  }
+
+  span {
+    color: #5d747b;
+    font-size: 12px;
+  }
+
+  p {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: #536970;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.finalize-note,
+.response-context {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-left: 3px solid #d88a12;
+  background: #fff7e7;
+  color: #734b0b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.response-context {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 14px;
+
+  span {
+    font-size: 11px;
+  }
+
+  p {
+    margin: 2px 0 0;
+  }
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+}
+
+@media (max-width: 1050px) {
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .version-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .opinion-grid {
+    grid-template-columns: 1fr;
+  }
+}

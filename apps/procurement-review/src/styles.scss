@@ -1,0 +1,160 @@
+:root {
+  color: #1c3038;
+  background: #f2f5f6;
+  font-family:
+    "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  background: #f2f5f6;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.page {
+  width: min(1560px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0;
+    color: #18343d;
+    font-size: 24px;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: #687a80;
+    font-size: 14px;
+  }
+}
+
+.section-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.data-panel {
+  border: 1px solid #d7e0e3;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.data-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e9eb;
+
+  h3 {
+    margin: 0;
+    color: #203c46;
+    font-size: 16px;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: #718188;
+    font-size: 12px;
+  }
+}
+
+.data-panel-body {
+  padding: 16px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(160px, 0.7fr)) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+
+  > label {
+    color: #526870;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  small {
+    color: #7b898e;
+    font-size: 11px;
+  }
+}
+
+.inline-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.muted {
+  color: #718188;
+}
+
+.mono {
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.table-primary {
+  color: #1f3b45;
+  font-weight: 600;
+}
+
+.table-secondary {
+  margin-top: 3px;
+  color: #718188;
+  font-size: 12px;
+}
+
+.tag-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 18px 14px;
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+}

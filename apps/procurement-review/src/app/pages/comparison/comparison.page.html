@@ -1,0 +1,184 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <h2>批量比对</h2>
+      <p>
+        在同一矩阵中横向比较供应商响应、评分、证明材料和独立意见差异。
+      </p>
+    </div>
+    <div class="inline-actions">
+      <p-button
+        label="评分差异 {{ differenceCount() }} 项"
+        icon="pi pi-exclamation-circle"
+        severity="warn"
+        [outlined]="true"
+        (onClick)="updateFilter({ differencesOnly: true })"
+      />
+      <p-button
+        label="重复证明 {{ reusedProofCount() }} 组"
+        icon="pi pi-copy"
+        severity="secondary"
+        [outlined]="true"
+      />
+    </div>
+  </header>
+
+  <section class="data-panel filter-panel">
+    <div class="data-panel-body comparison-filters">
+      <div class="field">
+        <label for="compare-keyword">关键词</label>
+        <input
+          id="compare-keyword"
+          pInputText
+          [ngModel]="filters().keyword"
+          (ngModelChange)="updateFilter({ keyword: $event })"
+          placeholder="条款编号、名称、要求或供应商"
+        />
+      </div>
+      <div class="field">
+        <label for="compare-category">条款类别</label>
+        <p-select
+          inputId="compare-category"
+          [options]="categoryOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="filters().category"
+          (ngModelChange)="updateFilter({ category: $event })"
+          appendTo="body"
+        />
+      </div>
+      <div class="field">
+        <label for="compare-type">条款类型</label>
+        <p-select
+          inputId="compare-type"
+          [options]="typeOptions"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="filters().type"
+          (ngModelChange)="updateFilter({ type: $event })"
+          appendTo="body"
+        />
+      </div>
+      <div class="field suppliers-field">
+        <label for="compare-suppliers">对比供应商</label>
+        <p-multiselect
+          inputId="compare-suppliers"
+          [options]="suppliers()"
+          optionLabel="name"
+          optionValue="id"
+          [ngModel]="selectedSupplierIds()"
+          (ngModelChange)="supplierSelectionChanged($event)"
+          appendTo="body"
+        />
+      </div>
+      <label class="difference-check">
+        <p-checkbox
+          [binary]="true"
+          [ngModel]="filters().differencesOnly"
+          (ngModelChange)="updateFilter({ differencesOnly: $event })"
+        />
+        <span>仅显示有评审分歧的条款</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="data-panel comparison-table-panel">
+    <div class="data-panel-header">
+      <div>
+        <h3>供应商响应矩阵</h3>
+        <p>
+          共 {{ filteredClauses().length }} 条，当前对比
+          {{ visibleSuppliers().length }} 家供应商
+        </p>
+      </div>
+      <p-button
+        label="进入逐条评审"
+        icon="pi pi-sitemap"
+        routerLink="/clauses"
+      />
+    </div>
+
+    <p-table
+      [value]="filteredClauses()"
+      [paginator]="true"
+      [rows]="8"
+      [rowsPerPageOptions]="[8, 15, 30]"
+      responsiveLayout="scroll"
+      styleClass="comparison-table"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th class="clause-column">技术条款</th>
+          @for (supplier of visibleSuppliers(); track supplier.id) {
+            <th>{{ supplier.name }}</th>
+          }
+          <th>风险定位</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-clause>
+        <tr>
+          <td class="clause-column">
+            <div class="clause-title">
+              <span class="mono">{{ clause.code }}</span>
+              <strong>{{ clause.title }}</strong>
+            </div>
+            <div class="tag-row">
+              <app-clause-type-tag [type]="clause.type" />
+              @if (clause.weight > 0) {
+                <span class="weight">满分 {{ clause.weight }}</span>
+              }
+            </div>
+          </td>
+          @for (supplier of visibleSuppliers(); track supplier.id) {
+            @let response = responseFor(clause, supplier.id);
+            <td
+              [class.cell-warning]="hasDifference(response)"
+              [class.cell-reused]="isReusedProof(response)"
+            >
+              @if (response) {
+                <div class="cell-stack">
+                  <app-status-tag [status]="response.status" />
+                  @if (clause.type === "scoring") {
+                    <strong class="score">{{ response.claimedScore }} 分</strong>
+                  }
+                  <span class="attachment" [title]="response.attachmentName">
+                    {{ response.attachmentName }}
+                  </span>
+                  <small>{{ response.reviews.length }} 条独立意见</small>
+                </div>
+              } @else {
+                <span class="muted">无响应</span>
+              }
+            </td>
+          }
+          <td class="risk-cell">
+            @let hasAnyDifference = clause.responses.some(hasDifference);
+            @let hasAnyReuse = hasReusedProof(clause);
+            @if (hasAnyDifference) {
+              <span class="risk-item warn">
+                <i class="pi pi-exclamation-circle"></i>
+                评审意见分歧
+              </span>
+            }
+            @if (hasAnyReuse) {
+              <span class="risk-item danger">
+                <i class="pi pi-copy"></i>
+                证明重复使用
+              </span>
+            }
+            @if (!hasAnyDifference && !hasAnyReuse) {
+              <span class="muted">未发现冲突</span>
+            }
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="visibleSuppliers().length + 2">
+            当前筛选条件下没有可比较条款。
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </section>
+</section>

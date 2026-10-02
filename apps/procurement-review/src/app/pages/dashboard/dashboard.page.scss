@@ -1,0 +1,159 @@
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metric {
+  display: grid;
+  min-height: 118px;
+  align-content: space-between;
+  padding: 15px;
+  border: 1px solid #d7e0e3;
+  border-radius: 7px;
+  background: #fff;
+
+  > span {
+    color: #667a81;
+    font-size: 13px;
+  }
+
+  > strong {
+    color: #1d3942;
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  > strong.danger {
+    color: #b42318;
+  }
+
+  > strong.version {
+    font-size: 17px;
+  }
+
+  > small {
+    color: #77878c;
+    font-size: 11px;
+  }
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 0.72fr 1.28fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.dashboard-grid.lower {
+  grid-template-columns: 1.45fr 0.55fr;
+}
+
+.progress-panel {
+  .data-panel-header > strong {
+    color: #0f6b67;
+    font-size: 24px;
+  }
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  color: #63777d;
+  font-size: 12px;
+}
+
+.review-score {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #fff3da;
+  color: #8a4b02;
+  font-size: 12px;
+}
+
+.audit-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 3px 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid #e5eaec;
+  }
+
+  li:last-child {
+    border-bottom: 0;
+  }
+
+  span {
+    color: #183a44;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  strong {
+    color: #3c565e;
+    font-size: 12px;
+  }
+
+  small {
+    grid-column: 1 / -1;
+    color: #75858a;
+    line-height: 1.45;
+  }
+
+  time {
+    grid-column: 2;
+    grid-row: 1;
+    color: #7a898e;
+    font-size: 11px;
+  }
+}
+
+.clarification-panel {
+  overflow: hidden;
+}
+
+.empty-state {
+  padding: 50px;
+  color: #6f8086;
+  text-align: center;
+}
+
+.error-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  border: 1px solid #efb9b4;
+  border-radius: 7px;
+  background: #fff8f7;
+
+  strong {
+    color: #a4261d;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+@media (max-width: 1280px) {
+  .metric-grid {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .metric-grid,
+  .dashboard-grid,
+  .dashboard-grid.lower {
+    grid-template-columns: 1fr;
+  }
+}

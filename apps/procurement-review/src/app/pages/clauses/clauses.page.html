@@ -1,0 +1,316 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <h2>条款评审</h2>
+      <p>
+        按技术条款树逐条查看供应商响应、证明材料和澄清记录；评审员意见独立保存。
+      </p>
+    </div>
+    <div class="inline-actions">
+      <p-button
+        label="发起澄清"
+        icon="pi pi-comments"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="!selectedResponse()"
+        (onClick)="openClarificationDialog()"
+      />
+      <p-button
+        label="批量比对"
+        icon="pi pi-table"
+        routerLink="/comparison"
+      />
+    </div>
+  </header>
+
+  <div class="clause-layout">
+    <aside class="data-panel clause-tree-panel">
+      <div class="data-panel-header">
+        <div>
+          <h3>技术条款树</h3>
+          <p>{{ clauseTree().length }} 个一级条目</p>
+        </div>
+      </div>
+      <div class="tree-wrap">
+        <p-tree
+          [value]="treeNodes()"
+          selectionMode="single"
+          (onNodeSelect)="selectNode($event.node)"
+        >
+          <ng-template let-node pTemplate="default">
+            @let clause = nodeTemplateData(node);
+            <div class="tree-node">
+              <div>
+                <span class="mono">{{ clause.code }}</span>
+                <strong>{{ clause.title }}</strong>
+              </div>
+              <div class="tag-row">
+                <app-clause-type-tag [type]="clause.type" />
+                @if (clause.weight > 0) {
+                  <span class="weight">{{ clause.weight }} 分</span>
+                }
+              </div>
+            </div>
+          </ng-template>
+        </p-tree>
+      </div>
+    </aside>
+
+    <main class="clause-detail">
+      @if (selectedClause(); as clause) {
+        <section class="data-panel clause-heading">
+          <div class="data-panel-header">
+            <div>
+              <h3>{{ clause.code }} {{ clause.title }}</h3>
+              <p>{{ clause.category }} · {{ clause.requirement }}</p>
+            </div>
+            <div class="tag-row">
+              <app-clause-type-tag [type]="clause.type" />
+              @if (clause.evidenceRequired) {
+                <p-tag value="需证明材料" severity="secondary" />
+              }
+            </div>
+          </div>
+          @if (clauseRisks().length) {
+            <div class="risk-strip">
+              <i class="pi pi-exclamation-triangle"></i>
+              <div>
+                @for (risk of clauseRisks(); track risk) {
+                  <span>{{ risk }}</span>
+                }
+              </div>
+            </div>
+          }
+        </section>
+
+        <section class="response-tabs">
+          @for (response of clause.responses; track response.id) {
+            <button
+              type="button"
+              [class.active]="selectedResponse()?.id === response.id"
+              (click)="selectResponse(response)"
+            >
+              <span>{{ response.supplierName }}</span>
+              <app-status-tag [status]="response.status" />
+            </button>
+          }
+        </section>
+
+        @if (selectedResponse(); as response) {
+          <div class="response-grid">
+            <section class="data-panel response-content">
+              <div class="data-panel-header">
+                <div>
+                  <h3>{{ response.supplierName }} 响应</h3>
+                  <p>
+                    提交人 {{ response.submittedBy }} ·
+                    {{ response.submittedAt | date: "yyyy-MM-dd HH:mm" }}
+                  </p>
+                </div>
+                <app-status-tag [status]="response.status" />
+              </div>
+              <div class="data-panel-body">
+                <p class="response-text">{{ response.responseText }}</p>
+                <dl class="response-meta">
+                  <div>
+                    <dt>声明评分</dt>
+                    <dd>{{ response.claimedScore }} 分</dd>
+                  </div>
+                  <div>
+                    <dt>证明文件</dt>
+                    <dd>{{ response.attachmentName }}</dd>
+                  </div>
+                  <div>
+                    <dt>证明指纹</dt>
+                    <dd class="mono">{{ response.proofFingerprint }}</dd>
+                  </div>
+                  <div>
+                    <dt>评审轮次</dt>
+                    <dd>第 {{ response.reviewRound }} 轮</dd>
+                  </div>
+                </dl>
+
+                <h4>独立评审意见</h4>
+                @if (response.reviews.length) {
+                  <div class="opinion-list">
+                    @for (review of response.reviews; track review.id) {
+                      <article>
+                        <header>
+                          <strong>{{ review.reviewer }}</strong>
+                          <app-status-tag [status]="review.decision" />
+                          @if (clause.type === "scoring") {
+                            <span>{{ review.score }} 分</span>
+                          }
+                          <time>{{ review.createdAt | date: "MM-dd HH:mm" }}</time>
+                        </header>
+                        <p>{{ review.comment }}</p>
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <p class="muted">尚无独立评审意见。</p>
+                }
+
+                <h4>澄清记录</h4>
+                @if (response.clarifications.length) {
+                  <div class="clarification-list">
+                    @for (
+                      clarification of response.clarifications;
+                      track clarification.id
+                    ) {
+                      <article>
+                        <header>
+                          <strong>第 {{ clarification.round }} 轮</strong>
+                          <app-clarification-tag
+                            [status]="clarification.status"
+                          />
+                          <time>
+                            截止
+                            {{ clarification.dueAt | date: "yyyy-MM-dd HH:mm" }}
+                          </time>
+                        </header>
+                        <p>{{ clarification.requestText }}</p>
+                        @if (clarification.supplierResponse) {
+                          <blockquote>
+                            {{ clarification.supplierResponse }}
+                          </blockquote>
+                        }
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <p class="muted">没有澄清记录。</p>
+                }
+              </div>
+            </section>
+
+            <aside class="data-panel review-form">
+              <div class="data-panel-header">
+                <div>
+                  <h3>提交独立意见</h3>
+                  <p>当前角色：{{ role() }}</p>
+                </div>
+              </div>
+              <form
+                class="data-panel-body"
+                [formGroup]="assessmentForm"
+                (ngSubmit)="submitAssessment()"
+              >
+                @if (!canReview()) {
+                  <div class="permission-note">
+                    采购人员可维护条款和发起澄清，不能代替评审员提交符合性结论。
+                  </div>
+                }
+                <div class="field">
+                  <label for="decision">符合性结论</label>
+                  <p-select
+                    inputId="decision"
+                    formControlName="decision"
+                    [options]="decisionOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    appendTo="body"
+                  />
+                </div>
+                <div class="field">
+                  <label for="score">评分</label>
+                  <p-inputnumber
+                    inputId="score"
+                    formControlName="score"
+                    [min]="0"
+                    [max]="clause.weight"
+                    [disabled]="clause.type !== 'scoring'"
+                    [showButtons]="true"
+                  />
+                  <small>
+                    {{
+                      clause.type === "scoring"
+                        ? "满分 " + clause.weight + " 分"
+                        : "非评分项固定为 0 分"
+                    }}
+                  </small>
+                </div>
+                <div class="field">
+                  <label for="comment">评审意见</label>
+                  <textarea
+                    id="comment"
+                    pTextarea
+                    formControlName="comment"
+                    rows="5"
+                    placeholder="说明证据依据、偏离事实或待澄清原因"
+                  ></textarea>
+                  @if (
+                    assessmentForm.controls.comment.touched &&
+                    assessmentForm.controls.comment.invalid
+                  ) {
+                    <small class="error">评审意见至少需要 6 个字符。</small>
+                  }
+                </div>
+                <p-button
+                  type="submit"
+                  label="提交独立意见"
+                  icon="pi pi-check"
+                  [disabled]="!canReview()"
+                  [loading]="false"
+                  styleClass="full-button"
+                />
+              </form>
+            </aside>
+          </div>
+        }
+      } @else {
+        <div class="empty-state">请选择技术条款。</div>
+      }
+    </main>
+  </div>
+</section>
+
+<p-dialog
+  header="发起澄清"
+  [modal]="true"
+  [visible]="clarificationVisible()"
+  (visibleChange)="clarificationVisible.set($event)"
+  [style]="{ width: 'min(560px, 94vw)' }"
+>
+  <form
+    class="dialog-form"
+    [formGroup]="clarificationForm"
+    (ngSubmit)="submitClarification()"
+  >
+    <div class="field">
+      <label for="clarification-text">澄清要求</label>
+      <textarea
+        id="clarification-text"
+        pTextarea
+        formControlName="requestText"
+        rows="5"
+        placeholder="说明需补充的材料、事实或判断边界"
+      ></textarea>
+    </div>
+    <div class="field">
+      <label for="due-at">澄清截止时间</label>
+      <p-datepicker
+        inputId="due-at"
+        formControlName="dueAt"
+        [showTime]="true"
+        [minDate]="minimumClarificationDate"
+        appendTo="body"
+      />
+      <small>系统限制在发起后 7 个自然日内。</small>
+    </div>
+    <div class="inline-actions dialog-actions">
+      <p-button
+        label="取消"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="clarificationVisible.set(false)"
+      />
+      <p-button
+        type="submit"
+        label="发出澄清"
+        icon="pi pi-send"
+        [disabled]="clarificationForm.invalid"
+      />
+    </div>
+  </form>
+</p-dialog>

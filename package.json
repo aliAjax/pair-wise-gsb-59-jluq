@@ -1,0 +1,47 @@
+{
+  "name": "procurement-compliance-review",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names GRAPHQL,WEB \"npm:mock\" \"npm:serve\"",
+    "start": "npm run dev",
+    "serve": "nx serve procurement-review --port 18459",
+    "mock": "tsx server/server.ts",
+    "build": "nx build procurement-review",
+    "typecheck": "tsc -p apps/procurement-review/tsconfig.app.json --noEmit && tsc -p tsconfig.server.json --noEmit"
+  },
+  "dependencies": {
+    "@angular/animations": "~20.3.32",
+    "@angular/cdk": "~20.2.14",
+    "@angular/common": "~20.3.32",
+    "@angular/compiler": "~20.3.32",
+    "@angular/core": "~20.3.32",
+    "@angular/forms": "~20.3.32",
+    "@angular/platform-browser": "~20.3.32",
+    "@angular/platform-browser-dynamic": "~20.3.32",
+    "@angular/router": "~20.3.32",
+    "@apollo/client": "^4.3.1",
+    "@ngrx/effects": "^20.1.0",
+    "@ngrx/entity": "^20.1.0",
+    "@ngrx/store": "^20.1.0",
+    "@ngrx/store-devtools": "^20.1.0",
+    "@primeuix/themes": "^1.2.5",
+    "apollo-angular": "^14.2.0",
+    "graphql": "^16.11.0",
+    "primeicons": "^7.0.0",
+    "primeng": "^20.4.0",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "~20.3.37",
+    "@angular/cli": "~20.3.37",
+    "@angular/compiler-cli": "~20.3.32",
+    "@apollo/server": "^5.5.1",
+    "@types/node": "^24.5.2",
+    "concurrently": "^10.0.5",
+    "nx": "^23.2.1",
+    "tsx": "^4.23.15",
+    "typescript": "~5.8.3"
+  }
+}
